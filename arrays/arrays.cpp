@@ -32,13 +32,67 @@ public:
   int size(){
     return m_size;
   }
+//添加操作
+  void add(int index, T num);
+  void addFirst(T num);
+  void addLast(T num);
+//删除操作
+  T remove(int index);
+  T removeFirst();
+  T removeLast();
+  void removeElement(T num);
   //...
 //private:
   T* m_data;       //数组首个数据的指针
   int m_capacity;  //数组容量
   int m_size;     //数组实际大小
 };
+//--------------------------------------
+//              添加操作
+//--------------------------------------
+template <class T>
+void Array<T>::add(int index, T num){
+  if(index<0 || index > m_size){
+    cout<<"illegal index"<<endl;
+    throw 0;
+  }
+  if(m_size>=m_capacity){
+    resize(2*m_capacity);
+  }
+  for(int i=m_size-1;i>=index;i--){
+    m_data[i+1]=m_data[i];
 
+  }
+  m_data[index]=num;
+  m_size++;
+}
+template <class T>
+void Array<T>::addLast(T num){
+  if(m_size >= m_capacity){
+    resize(2*m_capacity);
+  }
+  m_data[m_size] = num;
+  m_size++;
+}
+template <class T>
+void Array<T>::addFirst(T num){
+  add(0,num);
+}
+
+//--------------------------------------
+//           删除操作
+//--------------------------------------
+template <class T>
+T Array<T>::remove(int index){
+  if(index<0||index>m_size){
+    cout<<"illegal index"<<endl;
+    throw 0;
+  }
+  for(int i=index;i<m_size;i++){
+    m_data[i-1]=m_data[i];
+  }
+  m_size--;
+}
 int main(int argc, char const *argv[]) {
   Array<int>* sp=new Array<int>(10);
   sp->m_data[0]=1;
