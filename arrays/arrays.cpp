@@ -37,7 +37,7 @@ public:
   void addFirst(T num);
   void addLast(T num);
 //删除操作
-  T remove(int index);
+  void remove(int index);
   T removeFirst();
   T removeLast();
   void removeElement(T num);
@@ -83,15 +83,16 @@ void Array<T>::addFirst(T num){
 //           删除操作
 //--------------------------------------
 template <class T>
-T Array<T>::remove(int index){
-  if(index<0||index>m_size){
-    cout<<"illegal index"<<endl;
-    throw 0;
-  }
-  for(int i=index;i<m_size;i++){
-    m_data[i-1]=m_data[i];
-  }
-  m_size--;
+void Array<T>::remove(int index){
+    if(index<0||index>=m_size){
+        cout<<"illegal index"<<endl;
+        throw 0;
+    }
+    for(int i=index;i<m_size;i++){
+        m_data[i]=m_data[i+1];
+    }
+    m_size--;
+   // return
 }
 int main(int argc, char const *argv[]) {
   Array<int>* sp=new Array<int>(10);
