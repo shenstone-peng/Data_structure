@@ -295,4 +295,3 @@ int main()
    int i=isExistLoop2(head);
 return 0;
 }
-
