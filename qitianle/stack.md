@@ -31,6 +31,48 @@ class ArrayStack
 }
 ```
 - 用链表实现一个链式栈
+```c++
+struct Node{
+        string data;
+        Node* next=NULL;
+};
+class LinkedListStack
+{
+public:
+  Node* head;
+  Node* rear;
+  int count;
+  int n;
+  LinkedListStack()
+  {
+    head=new Node;
+    head->data="head";
+    rear=head;
+    count=0;
+  }
+  void push(string value)
+  {
+          Node* pTmp=(Node*)malloc(sizeof(Node));
+          pTemp->data=value;
+          //rear->next=add;
+          //rear=add;
+          pTmp->next=head->next;
+          head->next=pTmp->next;
+          this->count++;
+  }
+  string pop()
+  {
+    if(NULL==head->next)return "";
+    Node* ptmp=(Node*)malloc(sizeof(Node));
+    ptmp=head->next;
+    string pp=ptmp->data;
+    head->next=ptmp->next;
+    free(ptmp);
+    return pp;
+  }
+}
+
+```
 - 编程模拟实现一个浏览器的前进、后退功能
 20.[Valid Parentheses](https://leetcode.com/problems/valid-parentheses/)
 32.[https://leetcode.com/problems/valid-parentheses/](https://leetcode.com/problems/longest-valid-parentheses/)
