@@ -418,6 +418,31 @@ ConstRef::ConstRef(int ii):i(ii),ci(i),ri(ii){}
         |              |                   |            |
         +------------->+   ESTABLISHED     +<-----------+
                        +-------------------+
+                         |      |
+      FIN seq=x+2 ACK=y+1|      |         Recei^e FIN Send ACK=x+3
+           +-------------+      +----------------+
+           |   close()                           |
+    +------v-------+                      +------v-------+
+    |  FIN-WAIT-1  |                      |  CLOSE-WAIT  |
+    +---+------+---+                      +--------------+
+        |      |                                  |
+        |      |                                  |
+        |      |                                  |
+        |      |  Recieve Fin Send ACK            |
+        |      +------------+                     |Wait for Application Close
+        |                   |                     |  Send FIN
+Receive ACK for FIN         |                     |
+        ^                   v                     v
+   +----+--------+      +---+---------+   +-------+----+
+   |  FIN-WAIT-2 |      |  CLOSING    |   |  LAST-ACK  |
+   +-------------+      +---+---------+   +---------+--+
+ Receive FIN                |                       |
+    Send ACK                |Receive ACK for FIN    |
+        |     +-------------v+                      v
+        +-----> TIME-WAIT    |                    +-+-------------+
+              |              +------------------->+               |
+              +--------------+                    |    CLOSED     |
+                                                  +---------------+
 
 
 ```
