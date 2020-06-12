@@ -446,6 +446,17 @@ Receive ACK for FIN         |                     |
 
 
 ```
+3. 当server端socket在SYN-RECEIVED状态时，client端断链了，会重试发SYN-ACK，时间间隔为1s,2s,4s,8s,16s，总共31s，第5次发出后等待32s，如果没有回复就会断开这个链接。
+> **关于SYN FLOOD攻击**：给服务器发一个SYN就下线，于是服务器需要默认等待63s才会断开连接，这样就可以把服务器的syn连接的队列耗尽，让正常的连接请求不能处理。
+> **解决方案**：Linux下给了一个叫tcp_syncookies的参数来应对这个事——当SYN队列满了之后，TCP会通过源地址端口、目标地址端口和时间戳打造出一个特别的Sequence Number发回去（又叫cookie），如果是攻击者则不会有响应，如果是正常连接，则会把这个SYN Cookie发回来，然后服务端可以通过cookie建连接（即使不在SYN队列中）；tcp_synack_retries参数减少重试次数；tcp_max_syn_backlog参数增大SYN连接数；tcp_abort_on_overflow参数实在处理不过直接拒绝连接
+4. **关于ISN的初始化**：ISN不能hard code，会在网络不稳定时，接收端无法确定包的顺序和是否有用。RFC793里规定，ISN会和一个假的时钟绑在一起，这个时钟会在每4微妙对ISN做加1的操作，直到超过2^32，又从0开始。这样一个ISN的周期大约是4.55小时，因为我们假设我们的TCP Segment在网络上的存活时间不会超过Maximum Segment Lifetime，所以只要MSL的值小于4.55小时，那么我们就不会重用到ISN。
+5. **关于MSL和TIME_WAIT**：最后发出ACK，肯定要想一下对面有没有收到啊，因为TCP Segment最迟会花费1个MSL送到对面，如果对面1个MSL都没收到你的ACK，对面就会再次发一个FIN给你，就又得等1个MSL。一来一回，两个MSL，所以在发出ACK后，会进入TIME_WAIT状态，等待2个MSL时间，socket状态才会CLOSED。
+6. **超时重传机制** ：在未收到该收到的包后，就不发ACK，知道发送端发觉TIME OUT后，重传缺失的包。**问题**：等待timeout 时间太久，也不知道要重传哪些包，可能会浪费带宽
+7. **快速重传机制**：Fast Retransmit，接收端在未收到该收到的包后，会重复发上一个接收的包的ACK，连发三次后，发送端知道这个包没收到，会重发。**问题**解决了不需要等待timeout，但还是没解决不知道要重传哪些包的问题。
+8. **SACK方法**：这种方式在TCP头里加一个SACK的东西，ACK还是Fast Retransmit的ACK，SACK则是汇报接收到的数据碎版。
+9. **TCP的RTT算法**：RTT是一个数据包从发出去到回来的时间。RTO（Retransmission Time Out）超时时间
+> **经典算法** ：每次采样RTT值，便与SRTT加权求出新的SRTT。缺陷：很难处理重传时候的RTT值。
+> **Karn/Partrigdge**算法：忽略重传，不把重传的RTT做采样，如果遇到重传直接double rto值。缺陷：这种死规矩对于一个需要估计比较准确的RTT不靠谱。
 ---
 # 3 操作系统
 ## 3.1操作系统概论
