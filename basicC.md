@@ -1,3 +1,32 @@
+# 6 python
+## 6.1 正则表达式
+```python
+#!/usr/bin/python
+# coding=utf-8
+import os
+import shutil
+import sys
+import re
+
+result = re.match(reg_pattern,Astr)
+if result is None:
+    print 1
+print result.group(1)
+print result.group(3)
+print result.group(4)
+spfd=open('data.csv', mode='a')
+with open('sp.txt') as f:
+    for line in f:
+        line=line.strip('\n')
+        reg_pattern = r'.*BusinessSessionID:<(.*)>.*RTSPCreateLinkTime:<(.*)>.*DescribeRequestTime:<(.*) ms>.*DescribeResonseTime:<(.*) ms>.*SetupRequestTime:<(.*) ms>.*SetupResponseTime:<(.*) ms>    .*PlayRequesetTime:<(.*) ms>.*PlayResponseTime:<(.*) ms>.*FirstPackTime:<(.*) ms>.*Pat/PmtTime:<(.*) ms>.*I-Frame-StartTime:<(.*) ms>.*IFrame-TailTime:<(.*) ms>.*TotalTime:<(.*) ms>.*'
+        result = re.match(reg_pattern,line)
+        data=result.group(1)
+        for i in range(2,14):
+            data = data+','+result.group(i)
+        data = data +'\n'
+        spfd.write(data)
+    ```
+
 # 1基础部分
 ## 1.1基本语言
 ### 1.1.2 指针
@@ -507,3 +536,9 @@ ss -n state syn-recv sport=:80|wc -l
 > 虚拟内存可以控制进程对物理内存的访问，隔离不同进程的访问权限，提供系统的安全性。
 4. 当用户程序访问未被缓存的虚拟页时（即没有被缓存到物理内存中的数据），硬件就会触发缺页中断（Page Fault,PF），一种情况：被访问的页面已经加载到了物理内存中，但用户程序的页表（Page Table）并不存在该对应关系，这时我们只需要在页表中建立虚拟内存到物理内存的关系；另一种情况：操作系统需要将磁盘上未被缓存的虚拟页加载到物理内存中。
 5. 在Linux调用fork创建子进程时，实际上只复制了父进程的页表，当父进程或者子进程对共享的内存进行修改时，共享的内存才会以页为单位进行拷贝，父进程会保留原有的物理空间，而子进程会使用拷贝后的物理空间。
+### 3.2中断
+1. 
+> 中断又分为：
+> 硬中断：外围硬件比如网卡发给CPU的信号
+> 软中断：由硬中断处理后对操作系统内核发出信号的中断请求
+2. 
