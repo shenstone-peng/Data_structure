@@ -25,7 +25,7 @@ with open('sp.txt') as f:
             data = data+','+result.group(i)
         data = data +'\n'
         spfd.write(data)
-    ```
+   ```
 
 # 1基础部分
 ## 1.1基本语言
@@ -523,7 +523,24 @@ Receive ACK for FIN         |                     |
 ss -n state syn-recv sport=:80|wc -l    
 #查看80端口处于syn-recv状态的socket数量
 ```
+16.  **循环抓包法**
+命令：
+```bash
+nohup tcpdump -i eth3 host 192.168.201.132 and port 63701 -s0 -C100 -W100 -w /root/ts_dump.pcap -Z root > /dev/null &
+```
+> 命令说明：  
+> -i eth3 其中eth3----替换为IP所在的网口名称
+> host 192.168.201.132 其中IP替换为频道收流的IP地址
+> port 63701 其中63701替换为频道收流的端口
+> -C100 文件大小100MB
+> -W100 文件滚动个数100个
+> -w /root/ts_dump.pcap 文件存放路径
+> 预估可以抓包保存的时间：100MB（约4分钟），100个文件约（400分钟，大概在6-7小时），可以根据系统盘剩余空间适当调整下文件个数
 
+中断抓包命令：
+```bash
+pkill -9 tcpdump
+```
 ---
  # 3 操作系统
 ## 3.1操作系统概论
@@ -536,9 +553,105 @@ ss -n state syn-recv sport=:80|wc -l
 > 虚拟内存可以控制进程对物理内存的访问，隔离不同进程的访问权限，提供系统的安全性。
 4. 当用户程序访问未被缓存的虚拟页时（即没有被缓存到物理内存中的数据），硬件就会触发缺页中断（Page Fault,PF），一种情况：被访问的页面已经加载到了物理内存中，但用户程序的页表（Page Table）并不存在该对应关系，这时我们只需要在页表中建立虚拟内存到物理内存的关系；另一种情况：操作系统需要将磁盘上未被缓存的虚拟页加载到物理内存中。
 5. 在Linux调用fork创建子进程时，实际上只复制了父进程的页表，当父进程或者子进程对共享的内存进行修改时，共享的内存才会以页为单位进行拷贝，父进程会保留原有的物理空间，而子进程会使用拷贝后的物理空间。
-### 3.2中断
+### 3.2 中断
 1. 
 > 中断又分为：
 > 硬中断：外围硬件比如网卡发给CPU的信号
 > 软中断：由硬中断处理后对操作系统内核发出信号的中断请求
-2. 
+2. 网卡中断
+```bash
+cat /proc/interrupts
+           CPU0       CPU1
+  0:        138          0   IO-APIC-edge      timer
+  1:          1          2   IO-APIC-edge      i8042
+  8:          1          0   IO-APIC-edge      rtc0
+  9:          0          0   IO-APIC-fasteoi   acpi
+ 12:          3          1   IO-APIC-edge      i8042
+ 16:          0          0   IO-APIC-fasteoi   uhci_hcd:usb3
+ 17:          1          0   IO-APIC-fasteoi   radeon
+ 18:          0          0   IO-APIC-fasteoi   ehci_hcd:usb1, uhci_hcd:usb8, i801_smbus
+ 19:          0          0   IO-APIC-fasteoi   uhci_hcd:usb5, uhci_hcd:usb7
+ 21:          0          0   IO-APIC-fasteoi   uhci_hcd:usb4
+ 23:          0          0   IO-APIC-fasteoi   ehci_hcd:usb2, uhci_hcd:usb6
+ 24:          0          0   PCI-MSI-edge      aerdrv, PCIe PME
+ 25:          0          0   PCI-MSI-edge      aerdrv, PCIe PME
+ 26:          0          0   PCI-MSI-edge      aerdrv, PCIe PME, pciehp
+ 27:          0          0   PCI-MSI-edge      aerdrv, PCIe PME, pciehp
+ 28:          0          0   PCI-MSI-edge      aerdrv, PCIe PME, pciehp
+ 29:          0          0   PCI-MSI-edge      aerdrv, PCIe PME, pciehp
+ 30:          0          0   PCI-MSI-edge      PCIe PME, pciehp
+ 31:          0          0   PCI-MSI-edge      PCIe PME, pciehp
+ 32:          0          0   PCI-MSI-edge      PCIe PME, pciehp
+ 33:     161714     162023   PCI-MSI-edge      eth0
+ 35:      53554      53247   PCI-MSI-edge      0000:00:1f.2
+ 36:          1          0   PCI-MSI-edge      ioat-msi
+
+```
+第一列为中断号，查看该中断绑定的CPU中断亲和性。03表示该网卡中断会轮流指定到CPU0和CPU1
+```bash
+cat /proc/irq/33/smp_affinity
+03
+```
+网卡在接收到ipv4 tcp的数据流时，根据指定的字段计算hash值（例如Toeplitz哈希算法），之后将hash值的后7位数值作为索引，到网卡的对照表中找到相应的队列索引，将数据包添加到此队列中。
+【**现场故障**】：网卡驱动只对组播目的端口进行了一次Hash，现网情况下所有组播频道使用相同的目的端口，所有报文需要遍历链表进行查找处理，十分消耗CPU。**改进措施**：进行二次hash，除了使用组播目的端口进行第一次hash外，还对组播目的地址进行第二次hash，查找速度就很快。
+
+### 3.3性能（命令）
+1.查看性能的命令
+```bash
+#1. uptime
+#快速展示系统平均负载的方法，这也指出了等待运行进程的数量
+#三个数字分别统计过去1、5、15分钟的平均数
+[root@localhost ZMSS]# uptime
+ 15:07:50 up  3:52,  1 user,  load average: 1.51, 1.60, 1.57
+#2. dmesg | tail
+#这里展示的是最近10条系统消息日志，主要是看由于性能问题导致的错误
+[root@localhost ZMSS]# dmesg | tail
+[  197.648482] 111111entry tipc_send,msg_sect->iov_len:0
+[  197.772422] 111111entry tipc_send,msg_sect->iov_len:0
+[  197.897982] 111111entry tipc_send,msg_sect->iov_len:0
+[  198.079991] 111111entry tipc_send,msg_sect->iov_len:0
+[  198.190386] 111111entry tipc_send,msg_sect->iov_len:0
+[  209.443797] perf: interrupt took too long (3145 > 3137), lowering kernel.perf_event_max_sample_rate to 63000
+[  211.109880] 111111entry tipc_send,msg_sect->iov_len:28
+[  280.512999] perf: interrupt took too long (3943 > 3931), lowering kernel.perf_event_max_sample_rate to 50000
+[  434.259920] perf: interrupt took too long (4930 > 4928), lowering kernel.perf_event_max_sample_rate to 40000
+[ 5779.905683] hrtimer: interrupt took 5914 ns
+
+#3.vemstat 1
+#对虚拟内存统计的简短展示
+#r:cpu上的等待运行的可运行进程数，这个指标提供了判断CPU饱和度的数据，因为它不包含IO等待的进程
+#free:空闲内存，单位是k。
+#si,so：交换进来和交换出去的数据量，如果这两个值非0，那么就说明没有内存了（用到swap了）
+#us,sy,id,wa,st:这些是CPU时间的分解，是所有CPU的平均值，分别为用户时间，系统时间，空闲，等待IO时间和被偷的时间
+#CPU时间分解可以帮助确定CPU是不是非常忙（通过用户时间和系统时间累加判断）持续的IO等待则表明磁盘是瓶颈
+[root@localhost ZMSS]# vmstat 1
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+ 1  0      0 2196724 131440 4463008    0    0    15   124  959 1001  6 56 36  2  0
+ 1  0      0 2195960 131444 4463016    0    0     0    28 11144 14342  6 52 41  2  0
+#4.mpstat -P ALL 1
+#打印各个CPU的时间统计，可以看出整体CPU的使用是不是均衡的。
+
+[root@localhost ZMSS]# mpstat -P ALL 1
+Linux 3.10.0-693.21.1.el7.x86_64 (localhost.localdomain)        06/30/20        _x86_64_        (2 CPU)
+
+15:10:29     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+15:10:30     all    6.03    0.00   50.25    1.01    1.01    0.00    0.00    0.00    0.00   41.71
+15:10:30       0    5.10    0.00   45.92    3.06    1.02    0.00    0.00    0.00    0.00   44.90
+15:10:30       1    6.86    0.00   53.92    0.00    0.98    0.00    0.00    0.00    0.00   38.24
+#5.pidstat 1
+#为每个CPU统计信息功能
+[root@localhost ZMSS]# pidstat 1
+Linux 3.10.0-693.21.1.el7.x86_64 (localhost.localdomain)        06/30/20        _x86_64_        (2 CPU)
+
+15:12:04      UID       PID    %usr %system  %guest    %CPU   CPU  Command
+15:12:05        0      6061    0.00    0.87    0.00    0.87     1  kill_abnormal_s
+15:12:05        0      6468    0.00    3.48    0.00    3.48     0  ZMSSdu
+15:12:05        0      6777    0.00    0.87    0.00    0.87     0  ZMSSRtspOverUDP
+15:12:05        0      6778    0.00    0.87    0.00    0.87     1  ZMSSStreamingSe
+15:12:05        0     10755    0.87    6.09    0.00    6.96     0  pidstat
+15:12:05        0     10824    0.00    7.83    0.00    7.83     1  ps
+15:12:05        0     11341    0.00    0.87    0.00    0.87     1  ZMSSCC
+15:12:05        0     13626    0.00    0.87    0.00    0.87     0  ZXUSS_CGSL_CDNL
+15:12:05        0     13778    0.00    0.87    0.00    0.87     0  ZXUSS_CGSL_USSP
+15:12:05        0     13829    0.87    0.00    0.00    0.87     1  ZXUSS_CGSL_CDNC
