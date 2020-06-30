@@ -655,3 +655,45 @@ Linux 3.10.0-693.21.1.el7.x86_64 (localhost.localdomain)        06/30/20        
 15:12:05        0     13626    0.00    0.87    0.00    0.87     0  ZXUSS_CGSL_CDNL
 15:12:05        0     13778    0.00    0.87    0.00    0.87     0  ZXUSS_CGSL_USSP
 15:12:05        0     13829    0.87    0.00    0.00    0.87     1  ZXUSS_CGSL_CDNC
+#6.iostat -xz 1
+#r/s,w/s,rkB/s,wkB/s:表示设备上每秒钟的读写次数和读写的字节数，这些可以看出设备的负载情况
+#await:I/O等待的平均时间这是应用程序所等待的时间，包含了等待队列中的时间和被调度服务的时间。
+[root@localhost ~]# iostat -xz 1
+Linux 3.10.0-693.21.1.el7.x86_64 (localhost.localdomain)        06/30/20        _x86_64_        (2 CPU)
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           6.90    0.00   56.21    1.76    0.00   35.13
+
+Device:         rrqm/s   wrqm/s     r/s     w/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+sda               0.25    32.59    1.29    5.82    30.23   243.52    77.00     0.29   40.56  102.52   26.77   8.05   5.72
+
+#7.free -m
+#buffers:用于块设备I/O缓冲的缓存
+#cached:用于文件系统的页缓存
+[root@localhost ~]# free -m
+              total        used        free      shared  buff/cache   available
+Mem:           7470         848        1656          87        4966        5279
+Swap:             0           0           0
+#8.sar -n DEV 1
+#使用这个工具是可以检测网络接口的吞吐：rxkB/s和txkB/s。作为收发数据负载的度量，也是检测是否到达收发极限
+#如下例，接收数据2.46kB/s
+[root@localhost ~]# sar -n DEV 1
+Linux 3.10.0-693.21.1.el7.x86_64 (localhost.localdomain)        06/30/20        _x86_64_        (2 CPU)
+16:03:16        IFACE   rxpck/s   txpck/s    rxkB/s    txkB/s   rxcmp/s   txcmp/s  rxmcst/s
+16:03:17         eth0     24.00      5.00      2.46      0.54      0.00      0.00      0.00
+
+#9.sar -n TCP,ETCP 1
+#这是对TCP关键指标的统计
+#active/s:每秒本地发起的TCP连接数（例如通过connect()发起的链接）
+#passive/s：每秒远程发起的连接数（例如通过accept()接收的链接）
+#retran/s：每秒TCP重传数
+#这种主动和被动统计数通常用作对系统负载的粗略估计
+[root@localhost ~]# sar -n TCP,ETCP 1
+Linux 3.10.0-693.21.1.el7.x86_64 (localhost.localdomain)        06/30/20        _x86_64_        (2 CPU)
+
+16:08:18     active/s passive/s    iseg/s    oseg/s
+16:08:19         2.00      0.00      9.00     19.00
+
+16:08:18     atmptf/s  estres/s retrans/s isegerr/s   orsts/s
+16:08:19         0.00      0.00      0.00      0.00      0.00
+```
