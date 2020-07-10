@@ -84,8 +84,12 @@ A：
 #define TEST4 'Q'    //字符型
 #define TEST5 3.13159f   //float型
 ```
----
-2.
+2. Effictive C++ 条款02
+> 对于单纯常量，最好以const对象或enums替换#defines
+> 对于形似函数的宏（macros）,最好改用inline函数替换#defines
+
+
+3.
 Q：全局作用域声明的const变量可以被其他文件访问吗？
 A:
 ```c++
@@ -95,10 +99,11 @@ extern const int bb=2;    //可以被其他文件访问
 
 >  普通变量（非const）默认为extern。要使const变量能够在其他的文件中访问，必须显式地指定它为extern。
 
-----
-3.其他重要点
+
+4.其他重要点
 - const对象必须要初始化，且不能修改
-- 非const引用只能绑定到与该引用同类型对象。const引用则可以绑定到不同但相关的类型的对象或绑定到右值。 **原因**：因为const只读，不会修改引用原对象
+- 非const引用只能绑定到与该引用同类型对象。const引用则可以绑定到不同但相关的类型的对象或绑定到右值。
+ **原因**  ——因为const只读，不会修改引用原对象
 - 由于上面的原因，应该将不修改相应实参的形参定义为const引用。如果将这样的形参定义为非const引用，则毫无必要的限制了该函数的使用。
 
 ```c++
@@ -110,6 +115,12 @@ const int *const x = &initializedVar; //指向const int 值的const指针，必�
 - 如果使用引用形参的唯一目的是避免复制实参，则应将形参定义为const引用
 - 函数的非引用形参，对于调用时的参数是否为const无影响
 - const成员函数不能修改调用该函数的对象，const对象只能访问const成员函数,而非const对象可以访问任意的成员函数,包括const成员函数。所以对不修改成员变量的成员函数，应该定义为const成员函数。构造函数不能声明为const函数
+5.Effictive C++ 条款03
+```c++
+vector<int> vec;
+const iterator iter=vec.begin();    //int *const x
+const_iterator cIter=vec.begin();   //int const* x
+```
 
 
 -----
@@ -697,8 +708,59 @@ Linux 3.10.0-693.21.1.el7.x86_64 (localhost.localdomain)        06/30/20        
 16:08:18     atmptf/s  estres/s retrans/s isegerr/s   orsts/s
 16:08:19         0.00      0.00      0.00      0.00      0.00
 ```
+# 5 设计模式
+## 5.1 单例模式
+1. 懒汉和饿汉
+```c++
+class lazySingleton {
+private:
+	lazySingleton(){}
+	static lazySingleton *p;
+public:
+	static lazySingleton *instance();
+};
+lazySingleton *(lazySingleton::p) = nullptr;
+lazySingleton* lazySingleton::instance(){
+	if(p == nullptr){
+		p = new lazySingleton();
+	}
+	return p;
+}
 
-
+class hungrySingleton(){
+private:
+	hungrySingleton(){}
+	static hungrySingleton *p;
+public:
+	static hungrySingleton* instance();
+}
+hungrySingleton *(hungrySingleton::p) = new hungrySingleton();
+hungrySingleton* hungrySingleton::instance(){
+	return p;
+}
+```
+2. 很明显饿汉是线程安全的，这里的线程安全其实是针对instance而不是类成员p，懒汉则因为多线程判断(p==nullptr)，可能会生成多个实例，所以需要加锁判断
+。但是如果直接在if前加锁，会在每次调用时都会判断锁，而其实该函数只要被调用一次后，就不会再出现线程不安全的问题。所以采用双重检查锁模式，在上述锁前再加一层if(p\==nullptr)的判断。
+```c++
+lazySingleton* lazySingleton::instance(){
+	if(p == nullptr){
+		Lock lock;
+		if(p == nullptr){
+			p = new lazySingleton();
+		}
+	}
+	return p;
+}
+```
+3. 双重检查锁模式仍有个问题，是内存读写的乱序执行，即p可能还未构造完成，就被别的线程返回了。
+4. 更简洁的一种单例模式写法，用类中的静态成员变量实现
+```c++
+singleton* singleton::instance(){
+	static singleton p;
+	return &p;
+}
+```
+---
 # 6 数据结构
  ## 6.1跳表
  1. 跳表和红黑树很像，都可以支持快速的插入、删除、查找操作。
@@ -720,3 +782,8 @@ Linux 3.10.0-693.21.1.el7.x86_64 (localhost.localdomain)        06/30/20        
 3. 如何避免低效地扩容？
 > 为了解决一次性扩容耗时过多的情况，我们可以将扩容操作穿插在插入操作的过程中，分批完成。当装载因子触达阈值之后，我们只申请新空间，但并不将老的数据搬移到新散列表中。当有新数据要插入时，我们将新数据插入散列表，并且从老的散列表中拿出一个数据放入到新散列表。每次插入一个数据到散列表，我们都重复上面的过程。经过多次插入操作之后，老的散列表中的数据就一点一点全部搬移到新散列表中了。这样没有了集中的一次性数据搬移，插入操作就变的很快了。
 4. 装载因子=填入表中的元素个数/散列表的长度
+---
+## 6.3 深度和广度搜索算法
+1. 深度优先搜索算法的时间复杂度是O(E)，E表示边的个数。空间复杂度为O（V），V为顶点的个数。
+2. 广度优先搜索算法的的时间复杂度是O(E+V)，空间复杂度为O(V)。
+
